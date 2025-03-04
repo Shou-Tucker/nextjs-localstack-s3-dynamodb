@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  localstack:
+    container_name: localstack
+    image: localstack/localstack:latest
+    ports:
+      - "4566:4566"            # LocalStack Gateway
+      - "4510-4559:4510-4559"  # external services port range
+    environment:
+      - DEBUG=1
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - SERVICES=s3,dynamodb
+      - PERSISTENCE=1
+      - DEFAULT_REGION=ap-northeast-1
+    volumes:
+      - "./init-scripts:/etc/localstack/init/ready.d"
+      - "./volume:/var/lib/localstack"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+
+  nextjs:
+    container_name: nextjs
+    build:
+      context: ./next-app
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./next-app:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - localstack
+    environment:
+      - AWS_ENDPOINT=http://localstack:4566
+      - AWS_REGION=ap-northeast-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - BUCKET_NAME=images-bucket
+      - TABLE_NAME=images-table
